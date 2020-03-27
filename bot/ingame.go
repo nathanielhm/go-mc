@@ -14,16 +14,6 @@ import (
 	pk "github.com/Tnze/go-mc/net/packet"
 )
 
-// //GetPosition return the player's position
-// func (p *Player) GetPosition() (x, y, z float64) {
-// 	return p.X, p.Y, p.Z
-// }
-
-// //GetBlockPos return the position of the Block at player's feet
-// func (p *Player) GetBlockPos() (x, y, z int) {
-// 	return int(math.Floor(p.X)), int(math.Floor(p.Y)), int(math.Floor(p.Z))
-// }
-
 // HandleGame receive server packet and response them correctly.
 // Note that HandleGame will block if you don't receive from Events.
 func (c *Client) HandleGame() error {
@@ -49,6 +39,10 @@ func (c *Client) HandleGame() error {
 			}
 		}
 	}
+}
+
+func (c *Client) HandlePacket(p pk.Packet) (disconnect bool, err error) {
+	return c.handlePacket(p)
 }
 
 func (c *Client) handlePacket(p pk.Packet) (disconnect bool, err error) {
@@ -609,3 +603,36 @@ func sendPlayerPositionAndLookPacket(c *Client) {
 		pk.Boolean(c.OnGround),
 	))
 }
+
+// SetPosition method move your character around.
+// Server will ignore this if changes too much.
+func (c *Client) SetPosition(x, y, z float64, onGround bool) {
+	c.Player.X, c.Player.Y, c.Player.Z = x, y, z
+	c.Player.OnGround = onGround
+	sendPlayerPositionAndLookPacket(c)
+}
+
+// // LookAt method turn player's hand and make it look at a point.
+// func (g *Client) LookAt(x, y, z float64) {
+// 	x0, y0, z0 := g.player.X, g.player.Y, g.player.Z
+// 	x, y, z = x-x0, y-y0, z-z0
+
+// 	r := math.Sqrt(x*x + y*y + z*z)
+// 	yaw := -math.Atan2(x, z) / math.Pi * 180
+// 	for yaw < 0 {
+// 		yaw = 360 + yaw
+// 	}
+// 	pitch := -math.Asin(y/r) / math.Pi * 180
+
+// 	g.LookYawPitch(float32(yaw), float32(pitch))
+// }
+
+// // LookYawPitch set player's hand to the direct by yaw and pitch.
+// // yaw can be [0, 360) and pitch can be (-180, 180).
+// // if |pitch|>90 the player's hand will be very strange.
+// func (g *Client) LookYawPitch(yaw, pitch float32) {
+// 	g.motion <- func() {
+// 		g.player.Yaw, g.player.Pitch = yaw, pitch
+// 		sendPlayerLookPacket(g) //????????
+// 	}
+// }

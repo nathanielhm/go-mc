@@ -2,6 +2,7 @@ package world
 
 import (
 	"github.com/Tnze/go-mc/bot/world/entity"
+	"github.com/Tnze/go-mc/data"
 )
 
 //World record all of the things in the world where player at
@@ -47,29 +48,33 @@ type ChunkLoc struct {
 // 	East
 // )
 
-// // getBlock return the block in the position (x, y, z)
-// func (w *world) getBlock(x, y, z int) Block {
-// 	c := w.chunks[chunkLoc{x >> 4, z >> 4}]
-// 	if c != nil {
-// 		cx, cy, cz := x&15, y&15, z&15
-// 		/*
-// 			n = n&(16-1)
+// getBlock return the block in the position (x, y, z)
+func (w *World) GetBlock(x, y, z int) Block {
+	c := w.Chunks[ChunkLoc{x >> 4, z >> 4}]
+	if c != nil {
+		cx, cy, cz := x&15, y&15, z&15
+		/*
+			n = n&(16-1)
 
-// 			is equal to
+			is equal to
 
-// 			n %= 16
-// 			if n < 0 { n += 16 }
-// 		*/
+			n %= 16
+			if n < 0 { n += 16 }
+		*/
 
-// 		return c.sections[y/16].blocks[cx][cy][cz]
-// 	}
+		return c.sections[y/16].blocks[cx][cy][cz]
+	}
 
-// 	return Block{id: 0}
-// }
+	return Block{id: 0}
+}
 
-// func (b Block) String() string {
-// 	return blockNameByID[b.id]
-// }
+func (b Block) String() string {
+	return data.BlockNameByID[b.id]
+}
+
+func (b Block) ID() uint {
+	return b.id
+}
 
 //LoadChunk load chunk at (x, z)
 func (w *World) LoadChunk(x, z int, c *Chunk) {
