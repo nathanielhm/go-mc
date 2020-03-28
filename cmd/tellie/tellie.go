@@ -229,6 +229,157 @@ func find(mspl []string) error {
 	return nil
 }
 
+func moveShip(mspl []string) error {
+	x, errx := strconv.Atoi(mspl[2])
+	y, erry := strconv.Atoi(mspl[3])
+	z, errz := strconv.Atoi(mspl[4])
+	if errx != nil || erry != nil ||errz != nil {
+		c.Chat("invalid coordinate.")
+		return nil
+	}
+	dir := strings.ToLower(mspl[5])
+	if dir != "east" && dir != "north" && dir != "west" && dir != "sourth" && dir != "up" && dir != "down" {
+		c.Chat("Invalid direction.")
+		return nil
+	}
+	distance, errdist := strconv.Atoi(mspl[6])
+	if errdist != nil {
+		c.Chat("Invalid distance.")
+		return nil
+	}
+	var xl,yl,zl,xu,yu,zu int
+	var xs,ys,zs int
+	// first we find a gold block.
+	var xb, yb, zb int
+	success := 0
+	for xb = x-30 ; xb < x+30; xb++ {
+		for yb = Max(1,y-30) ; yb < Min(255,y+30); yb++ {
+			for zb = z-30 ; zb < z+30; zb++ {
+				block := c.Wd.GetBlock(xb,yb,zb)
+				if block.String() == "minecraft:gold_block" {
+					success = 1
+					xs = xb
+					ys = yb
+					zs = zb
+					break
+				}
+			}
+			if success == 1 {
+				break
+			}
+		}
+		if success == 1 {
+			break
+		}
+	}
+	if success == 0 {
+		c.Chat(fmt.Sprintf("Please move your captain closer to a ship corner."))
+		return nil
+	}
+
+	// Now we seek the other gold blocks.
+	success = 0
+	d := 0
+	for success == 0 && d < 100 {
+		d = d+1
+		block := c.Wd.GetBlock(xs-d,ys,zs)
+		if block.String() == "minecraft:gold_block" {
+			success = 1
+			xl = xs-d
+			xu = xs
+		}
+		block = c.Wd.GetBlock(xs+d,ys,zs)
+		if block.String() == "minecraft:gold_block" {
+			success = 1
+			xl = xs
+			xu = xs+d
+		}
+	}
+	if success == 0 {
+		c.Chat("your ship is too big.")
+		return nil
+	}
+	success = 0
+	d = 0
+	for success == 0 && d < 100 {
+		d = d+1
+		block := c.Wd.GetBlock(xl,Max(ys-d,1),zs)
+		if block.String() == "minecraft:gold_block" {
+			success = 1
+			yl = Max(ys-d,1)
+			yu = ys
+		}
+		block = c.Wd.GetBlock(xl,Min(ys+d,255),zs)
+		if block.String() == "minecraft:gold_block" {
+			success = 1
+			yl = ys
+			yu = Min(ys+d,255)
+		}
+	}
+	if success == 0 {
+		c.Chat("your ship is too big.")
+		return nil
+	}
+	success = 0
+	d = 0
+	for success == 0 && d < 100 {
+		d = d+1
+		block := c.Wd.GetBlock(xl,yl,zs-d)
+		if block.String() == "minecraft:gold_block" {
+			success = 1
+			zl = zs-d
+			zu = zs
+		}
+		block = c.Wd.GetBlock(xl,yl,zs+d)
+		if block.String() == "minecraft:gold_block" {
+			success = 1
+			zl = zs
+			zu = zs+d
+		}
+	}
+	if success == 0 {
+		c.Chat("your ship is too big.")
+		return nil
+	}
+	c.Chat("I've computed the boundary of your ship. Warping now...")
+
+	// Begin warp.
+	var xdest, ydest, zdest int
+	if strings.ToLower(dir) == "east" {
+		xdest = xu+distance
+		ydest = yu
+		zdest = zu
+	}
+	if strings.ToLower(dir) == "west" {
+		xdest = xu-distance
+		ydest = yu
+		zdest = zu
+	}
+	if strings.ToLower(dir) == "north" {
+		xdest = xu
+		ydest = yu
+		zdest = zu-distance
+	}
+	if strings.ToLower(dir) == "south" {
+		xdest = xu
+		ydest = yu
+		zdest = zu+distance
+	}
+	if strings.ToLower(dir) == "up" {
+		xdest = xu
+		ydest = Min(yu+distance,255)
+		zdest = zu
+	}
+	if strings.ToLower(dir) == "down" {
+		xdest = xu
+		ydest = yu
+		zdest = Max(yu-distance,1)
+	}
+	c.Chat(fmt.Sprintf("/clone %d %d %d %d %d %d %d %d %d replace move",xl,yl,zl,xu,yu,zu,xdest,ydest,zdest))
+	c.Chat("Warp complete, captain.")
+	return nil
+}
+
 func onChatMsg(cm chat.Message, pos byte) error {
 	log.Println("Chat:", cm)
 	spl := strings.Split(cm.String(), "> ")
@@ -258,6 +409,11 @@ func onChatMsg(cm chat.Message, pos byte) error {
 			c.Chat(block.String())
 		} else if len(pmsg)>4 && strings.ToLower(pmsg[:4]) == "find" {
 			err := find(mspl)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if len(pmsg) > 5 && strings.ToLower(pmsg[:5]) == "drive" {
+			err := moveShip(mspl)
 			if err != nil {
 				log.Fatal(err)
 			}
