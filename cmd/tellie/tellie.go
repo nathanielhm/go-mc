@@ -27,6 +27,7 @@ var (
 	c     *bot.Client
 	realm_address = ""
 	realm_port = 0
+	warping = false
 	watch chan time.Time
 	apiKey = "CC238ZlLq4J0m-JTvrKBlmx5XNA"
 	re = regexp.MustCompile("[A-Z]+:")
@@ -102,6 +103,9 @@ func onDeath() error {
 	c.Chat("Respawning...")
 	c.Respawn()
 
+	if warping == false {
+		c.Chat("/teleport Telleilogical 90 66 -247")
+	}
 	return nil
 }
 
@@ -147,41 +151,15 @@ func Min(x, y int) int {
 }
 
 
-func bed(msg string) error {
+func bed(xb,yb,zb int) error {
 	log.Println("Bed requested")
-	x,y,z := c.Player.GetBlockPos()
-	success := 0
 	// look for a bed nearby
-	var xb, yb, zb int
-	for xb = x-3 ; xb < x+3; xb++ {
-		for yb = y-3 ; yb < y+3; yb++ {
-			for zb = z-3 ; zb < z+3; zb++ {
-				block := c.Wd.GetBlock(xb,yb,zb)
-				if block.String() == "minecraft:white_bed" {
-					log.Println(fmt.Sprintf("Bed found at %d,%d,%d\n",xb,yb,zb))
-					success = 1
-					break
-				}
-			}
-			if success == 1 {
-				break
-			}
-		}
-		if success == 1 {
-			break
-		}
+	err := c.UseBlock(0,xb,yb,zb,1,0.5,1,0.5,false)
+	if err != nil {
+		return err
 	}
-	if success == 0 {
-		log.Println("No bed found.")
-		leave()
-	} else {
-		err := c.UseBlock(0,xb,yb,zb,1,0.5,1,0.5,false)
-		if err != nil {
-			return err
-		}
-		time.Sleep(1 * time.Second)
-		c.Chat("In bed")
-	}
+	time.Sleep(1 * time.Second)
+	c.Chat("In bed")
 	return nil
 }
 
@@ -229,7 +207,7 @@ func find(mspl []string) error {
 	return nil
 }
 
-func moveShip(mspl []string) error {
+func moveShip(mspl []string, captain string) error {
 	xold,yold,zold := c.Player.GetBlockPos()
 
 	x, errx := strconv.Atoi(mspl[2])
@@ -249,9 +227,20 @@ func moveShip(mspl []string) error {
 	}
 
 	c.Chat("Ship warp requested. Materializing on your bridge now, captain.")
-	c.Chat("/kill Telleilogical")
-	time.Sleep(2 * time.Second)
 	c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d",x,y,z))
+
+	err := bed(x,y,z)
+
+	if err != nil {
+		c.Chat("I need a bed here.")
+		c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d",xold,yold,zold))
+		return nil
+	}
+	c.Chat(fmt.Sprintf("/kill Telleilogical"))
+	if err != nil {
+		c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d",xold,yold,zold))
+		return nil
+	}
 	c.Chat("Hello, captain. I require a crystaline structure to align the phase. One diamond, please.")
 	time.Sleep(5 * time.Second)
 
@@ -376,16 +365,19 @@ func moveShip(mspl []string) error {
 	c.Chat("I've computed the boundary of your ship. Warping now...")
 
 	// Begin warp.
+	c.Chat(fmt.Sprintf("/forceload add %d %d %d %d", xdest-(xu-xl), zdest-(zu-zl), xdest, zdest))
 	xdest := xl + (xnew-x)
 	ydest := Max( 1, Min(yl + (ynew-y), 255-(yu-yl)) )
 	zdest := zl + (znew-z)
 
 	c.Chat(fmt.Sprintf("/clone %d %d %d %d %d %d %d %d %d replace move",xl,yl,zl,xu,yu,zu,xdest,ydest,zdest))
+	c.Chat(fmt.Sprintf("/teleport %s %d %d %d",captain, xnew,ynew,znew))
 	c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d",xnew,ynew,znew))
 	c.Chat("Warp complete, captain.")
 	time.Sleep(1 * time.Second)
 	c.Chat("Returning to base now.")
 	c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d", xold, yold, zold))
+	c.Chat(fmt.Sprintf("/forceload remove %d %d %d %d", xdest-(xu-xl), zdest-(zu-zl), xdest, zdest))
 	return nil
 }
 
@@ -397,8 +389,10 @@ func onChatMsg(cm chat.Message, pos byte) error {
 	}
 
 	msg := spl[1]
+	spl2 := strings.Split(spl[0],"<")
+	requester := spl2[1]
 	if len(msg) > 2 && strings.ToLower(msg[:3]) == "bed" {
-		err := bed(msg)
+		err := bed(89,66,-249)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -433,10 +427,12 @@ func onChatMsg(cm chat.Message, pos byte) error {
 				log.Fatal(err)
 			}
 		} else if len(pmsg) > 5 && strings.ToLower(pmsg[:5]) == "drive" {
-			err := moveShip(mspl)
+			warping = true
+			err := moveShip(mspl,requester)
 			if err != nil {
 				log.Fatal(err)
 			}
+			warping = false
 		} else {
 			resp, err := session.Ask(pmsg)
 			if err != nil {
