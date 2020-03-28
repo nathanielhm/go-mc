@@ -230,9 +230,19 @@ func find(mspl []string) error {
 }
 
 func moveShip(mspl []string) error {
+	xold,yold,zold := c.Player.GetBlockPos()
+
 	x, errx := strconv.Atoi(mspl[2])
 	y, erry := strconv.Atoi(mspl[3])
 	z, errz := strconv.Atoi(mspl[4])
+
+	c.Chat("Ship warp requested. Materializing on your bridge now, captain.")
+	c.Chat("/kill Telleilogical")
+	time.Sleep(1 * time.Second)
+	c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d",x,y,z))
+	time.Sleep(1 * time.Second)
+	c.Chat("Hello, captain.")
+
 	if errx != nil || erry != nil ||errz != nil {
 		c.Chat("invalid coordinate.")
 		return nil
@@ -276,9 +286,9 @@ func moveShip(mspl []string) error {
 		c.Chat(fmt.Sprintf("Please move your captain closer to a ship corner."))
 		return nil
 	} else {
-		log.Println(xs, ys, zs)
+		c.Chat(fmt.Sprintf("Found seed block at %d,%d,%d.",xs, ys, zs))
 	}
-	
+
 	// Now we seek the other gold blocks.
 	success = 0
 	d := 0
@@ -289,12 +299,15 @@ func moveShip(mspl []string) error {
 			success = 1
 			xl = xs-d
 			xu = xs
+			c.Chat(fmt.Sprintf("Found new x block at %d,%d,%d.",xl, ys, zs))
+
 		}
 		block = c.Wd.GetBlock(xs+d,ys,zs)
 		if block.String() == "minecraft:gold_block" {
 			success = 1
 			xl = xs
 			xu = xs+d
+			c.Chat(fmt.Sprintf("Found new x block at %d,%d,%d.",xu, ys, zs))
 		}
 	}
 	if success == 0 {
@@ -311,12 +324,14 @@ func moveShip(mspl []string) error {
 			success = 1
 			yl = Max(ys-d,1)
 			yu = ys
+			c.Chat(fmt.Sprintf("Found new y block at %d,%d,%d.",xs, yl, zs))
 		}
 		block = c.Wd.GetBlock(xs,Min(ys+d,255),zs)
 		if block.String() == "minecraft:gold_block" {
 			success = 1
 			yl = ys
 			yu = Min(ys+d,255)
+			c.Chat(fmt.Sprintf("Found new y block at %d,%d,%d.",xs, yu, zs))
 		}
 	}
 	if success == 0 {
@@ -329,18 +344,20 @@ func moveShip(mspl []string) error {
 	for success == 0 && d < 100 {
 		d = d+1
 		block := c.Wd.GetBlock(xs,ys,zs-d)
-		log.Println(xs,ys,zs-d,block.String())
+		c.Chat(fmt.Sprintf("%d,%d,%d: %s",xs,ys,zs-d,block.String()))
 		if block.String() == "minecraft:gold_block" {
 			success = 1
 			zl = zs-d
 			zu = zs
+			c.Chat(fmt.Sprintf("Found new z block at %d,%d,%d.",xs, ys, zl))
 		}
 		block = c.Wd.GetBlock(xs,ys,zs+d)
-		log.Println(xs,ys,zs+d,block.String())
+		c.Chat(fmt.Sprintf("%d,%d,%d: %s",xs,ys,zs+d,block.String()))
 		if block.String() == "minecraft:gold_block" {
 			success = 1
 			zl = zs
 			zu = zs+d
+			c.Chat(fmt.Sprintf("Found new z block at %d,%d,%d.",xs, ys, zu))
 		}
 	}
 	if success == 0 {
@@ -353,37 +370,47 @@ func moveShip(mspl []string) error {
 	// Begin warp.
 	var xdest, ydest, zdest int
 	if strings.ToLower(dir) == "east" {
+		x = x+distance
 		xdest = xl+distance
 		ydest = yl
 		zdest = zl
 	}
 	if strings.ToLower(dir) == "west" {
+		x = x-distance
 		xdest = xl-distance
 		ydest = yl
 		zdest = zl
 	}
 	if strings.ToLower(dir) == "north" {
+		z = z-distance
 		xdest = xl
 		ydest = yl
 		zdest = zl-distance
 	}
 	if strings.ToLower(dir) == "south" {
+		z = z+distance
 		xdest = xl
 		ydest = yl
 		zdest = zl+distance
 	}
 	if strings.ToLower(dir) == "up" {
+		y = y+distance
 		xdest = xl
 		ydest = Min(yl+distance,255-(yu-yl))
 		zdest = zl
 	}
 	if strings.ToLower(dir) == "down" {
+		y = y-distance
 		xdest = xl
-		ydest = yl
-		zdest = Max(yl-distance,1)
+		ydest = Max(yl-distance,1)
+		zdest = zl
 	}
 	c.Chat(fmt.Sprintf("/clone %d %d %d %d %d %d %d %d %d replace move",xl,yl,zl,xu,yu,zu,xdest,ydest,zdest))
+	c.Chat(fmt.Sprintf("/teleport tellie %d %d %d",x,y,z))
 	c.Chat("Warp complete, captain.")
+	time.Sleep(1 * time.Second)
+	c.Chat("Returning to base now.")
+	c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d", xold, yold, zold))
 	return nil
 }
 
