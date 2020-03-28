@@ -235,28 +235,36 @@ func moveShip(mspl []string) error {
 	x, errx := strconv.Atoi(mspl[2])
 	y, erry := strconv.Atoi(mspl[3])
 	z, errz := strconv.Atoi(mspl[4])
-
-	c.Chat("Ship warp requested. Materializing on your bridge now, captain.")
-	c.Chat("/kill Telleilogical")
-	time.Sleep(1 * time.Second)
-	c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d",x,y,z))
-	time.Sleep(1 * time.Second)
-	c.Chat("Hello, captain.")
-
 	if errx != nil || erry != nil ||errz != nil {
 		c.Chat("invalid coordinate.")
 		return nil
 	}
-	dir := strings.ToLower(mspl[5])
-	if dir != "east" && dir != "north" && dir != "west" && dir != "south" && dir != "up" && dir != "down" {
-		c.Chat("Invalid direction.")
+
+	xnew, errx := strconv.Atoi(mspl[5])
+	ynew, erry := strconv.Atoi(mspl[6])
+	znew, errz := strconv.Atoi(mspl[7])
+	if errx != nil || erry != nil ||errz != nil {
+		c.Chat("invalid coordinate.")
 		return nil
 	}
-	distance, errdist := strconv.Atoi(mspl[6])
-	if errdist != nil {
-		c.Chat("Invalid distance.")
+
+	c.Chat("Ship warp requested. Materializing on your bridge now, captain.")
+	c.Chat("/kill Telleilogical")
+	time.Sleep(2 * time.Second)
+	c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d",x,y,z))
+	c.Chat("Hello, captain. I require a crystaline structure to align the phase. One diamond, please.")
+	time.Sleep(5 * time.Second)
+
+	// Check if given a diamond.
+	// If not, leave.
+	if false {
+		c.Chat("I cannot warp the ship without a diamond.")
+		c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d", xold,yold,zold))
 		return nil
 	}
+	// If so, continue.
+	c.Chat("Thank you, captain.")
+
 	var xl,yl,zl,xu,yu,zu int
 	var xs,ys,zs int
 	// first we find a gold block.
@@ -368,45 +376,12 @@ func moveShip(mspl []string) error {
 	c.Chat("I've computed the boundary of your ship. Warping now...")
 
 	// Begin warp.
-	var xdest, ydest, zdest int
-	if strings.ToLower(dir) == "east" {
-		x = x+distance
-		xdest = xl+distance
-		ydest = yl
-		zdest = zl
-	}
-	if strings.ToLower(dir) == "west" {
-		x = x-distance
-		xdest = xl-distance
-		ydest = yl
-		zdest = zl
-	}
-	if strings.ToLower(dir) == "north" {
-		z = z-distance
-		xdest = xl
-		ydest = yl
-		zdest = zl-distance
-	}
-	if strings.ToLower(dir) == "south" {
-		z = z+distance
-		xdest = xl
-		ydest = yl
-		zdest = zl+distance
-	}
-	if strings.ToLower(dir) == "up" {
-		y = y+distance
-		xdest = xl
-		ydest = Min(yl+distance,255-(yu-yl))
-		zdest = zl
-	}
-	if strings.ToLower(dir) == "down" {
-		y = y-distance
-		xdest = xl
-		ydest = Max(yl-distance,1)
-		zdest = zl
-	}
+	xdest := xl + (xnew-x)
+	ydest := Max( 1, Min(yl + (ynew-y), 255-(yu-yl)) )
+	zdest := zl + (znew-z)
+
 	c.Chat(fmt.Sprintf("/clone %d %d %d %d %d %d %d %d %d replace move",xl,yl,zl,xu,yu,zu,xdest,ydest,zdest))
-	c.Chat(fmt.Sprintf("/teleport tellie %d %d %d",x,y,z))
+	c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d",xnew,ynew,znew))
 	c.Chat("Warp complete, captain.")
 	time.Sleep(1 * time.Second)
 	c.Chat("Returning to base now.")
@@ -441,6 +416,17 @@ func onChatMsg(cm chat.Message, pos byte) error {
 			x,y,z := c.Player.GetBlockPos()
 			block := c.Wd.GetBlock(x,y-1,z)
 			c.Chat(block.String())
+		} else if len(pmsg) > 6 && strings.ToLower(pmsg[:6]) == "select" {
+			j, err := strconv.Atoi(mspl[2])
+			if err != nil {
+				c.Chat("I don't understand that slot.")
+				return nil
+			} else if j > 8 || j < 0 {
+				c.Chat("That slot isn't valid.")
+			}
+			c.SelectItem(j)
+		} else if pmsg == "what are you holding" {
+			c.Chat(fmt.Sprintf("%d", c.Player.HeldItem))
 		} else if len(pmsg)>4 && strings.ToLower(pmsg[:4]) == "find" {
 			err := find(mspl)
 			if err != nil {
