@@ -130,6 +130,23 @@ func leave() int {
 	return 0
 }
 
+
+func Max(x, y int) int {
+	if x > y {
+		return x
+	} else {
+		return y
+	}
+}
+func Min(x, y int) int {
+	if x < y {
+		return x
+	} else {
+		return y
+	}
+}
+
+
 func onChatMsg(cm chat.Message, pos byte) error {
 	log.Println("Chat:", cm)
 	spl := strings.Split(cm.String(), "> ")
@@ -149,7 +166,7 @@ func onChatMsg(cm chat.Message, pos byte) error {
 				for zb = z-3 ; zb < z+3; zb++ {
 					block := c.Wd.GetBlock(xb,yb,zb)
 					if block.String() == "minecraft:white_bed" {
-						log.Printf("Bed found at %i,%i,%i\n",xb,yb,zb)
+						log.Println(fmt.Sprintf("Bed found at %d,%d,%d\n",xb,yb,zb))
 						success = 1
 						break
 					}
@@ -173,8 +190,7 @@ func onChatMsg(cm chat.Message, pos byte) error {
 			time.Sleep(1 * time.Second)
 			c.Chat("In bed")
 		}
-	}
-	if len(msg) > 6 && strings.ToLower(msg[:6]) == "tellie" {
+	} else if len(msg) > 6 && strings.ToLower(msg[:6]) == "tellie" {
 		mspl := strings.Split(msg, " ")
 		pmsg := msg
 		if len(mspl) > 1 {
@@ -188,6 +204,47 @@ func onChatMsg(cm chat.Message, pos byte) error {
 			x,y,z := c.Player.GetBlockPos()
 			block := c.Wd.GetBlock(x,y-1,z)
 			c.Chat(block.String())
+		} else if len(pmsg)>4 && strings.ToLower(pmsg[:4]) == "find" {
+			var blockname string
+			if len(mspl) < 5 {
+				c.Chat("I can only find stuff if you format > tellie find [block] [x] [y] [z].")
+				return nil
+			}
+			if strings.ToLower(mspl[2]) == "diamonds" {
+				blockname = "minecraft:diamond_ore"
+			} else {
+				blockname = strings.ToLower(mspl[2])
+			}
+			x, errx := strconv.Atoi(mspl[3])
+			y, erry := strconv.Atoi(mspl[4])
+			z, errz := strconv.Atoi(mspl[5])
+			if errx != nil || erry != nil ||errz != nil {
+				c.Chat("invalid coordinate.")
+				return nil
+			}
+			success := 0
+			var xb, yb, zb int
+			for xb = x-30 ; xb < x+30; xb++ {
+				for yb = Max(1,y-30) ; yb < Min(255,y+30); yb++ {
+					for zb = z-30 ; zb < z+30; zb++ {
+						block := c.Wd.GetBlock(xb,yb,zb)
+						if block.String() == blockname {
+							c.Chat(fmt.Sprintf("%s found at %d,%d,%d\n",blockname,xb,yb,zb))
+							success = 1
+							break
+						}
+					}
+					if success == 1 {
+						break
+					}
+				}
+				if success == 1 {
+					break
+				}
+			}
+			if success == 0 {
+				c.Chat(fmt.Sprintf("%s not found.",blockname))
+			}
 		} else {
 			resp, err := session.Ask(pmsg)
 			if err != nil {
