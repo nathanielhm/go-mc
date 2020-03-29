@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"log"
 	"time"
+	"math"
 
 	"github.com/Tnze/go-mc/yggdrasil"
 	"github.com/Tnze/go-mc/bot"
@@ -27,7 +28,11 @@ var (
 	c     *bot.Client
 	realm_address = ""
 	realm_port = 0
+
 	warping = false
+	xbase,ybase,zbase int
+	ship_xl,ship_yl,ship_zl,ship_xu,ship_yu,ship_zu int
+
 	watch chan time.Time
 	apiKey = "CC238ZlLq4J0m-JTvrKBlmx5XNA"
 	re = regexp.MustCompile("[A-Z]+:")
@@ -39,6 +44,9 @@ var session = cleverbot.New(apiKey)
 
 func main() {
 	c = bot.NewClient()
+	xbase = 90
+	ybase = 66
+	zbase = -247
 
 	// log in
 	auth, err := yggdrasil.Authenticate(username,password)
@@ -104,7 +112,7 @@ func onDeath() error {
 	c.Respawn()
 
 	if warping == false {
-		c.Chat("/teleport Telleilogical 90 66 -247")
+		c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d",xbase,ybase,zbase))
 	}
 	return nil
 }
@@ -207,52 +215,58 @@ func find(mspl []string) error {
 	return nil
 }
 
-func moveShip(mspl []string, captain string) error {
-	xold,yold,zold := c.Player.GetBlockPos()
-
-	x, errx := strconv.Atoi(mspl[2])
-	y, erry := strconv.Atoi(mspl[3])
-	z, errz := strconv.Atoi(mspl[4])
-	if errx != nil || erry != nil ||errz != nil {
-		c.Chat("invalid coordinate.")
-		return nil
-	}
-
-	xnew, errx := strconv.Atoi(mspl[5])
-	ynew, erry := strconv.Atoi(mspl[6])
-	znew, errz := strconv.Atoi(mspl[7])
-	if errx != nil || erry != nil ||errz != nil {
-		c.Chat("invalid coordinate.")
-		return nil
-	}
-
+func learnShip(spl []string) error {
 	c.Chat("Ship warp requested. Materializing on your bridge now, captain.")
-	c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d",x,y,z))
 
-	err := bed(x,y,z)
+	xf,yf,zf := c.Player.GetPosition()
+	x := int(math.Floor(xf))
+	y := int(math.Floor(yf))
+	z := int(math.Floor(zf))
+	xl,errxl := strconv.Atoi(spl[1])
+	yl,erryl := strconv.Atoi(spl[2])
+	zl,errzl := strconv.Atoi(spl[3])
+	xu,errxu := strconv.Atoi(spl[4])
+	yu,erryu := strconv.Atoi(spl[5])
+	zu,errzu := strconv.Atoi(spl[6])
 
-	if err != nil {
-		c.Chat("I need a bed here.")
-		c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d",xold,yold,zold))
+	if errxl != nil || erryl != nil || errzl != nil {
+		c.Chat("There's something wrong with your ship coding.")
 		return nil
 	}
-	c.Chat(fmt.Sprintf("/kill Telleilogical"))
-	if err != nil {
-		c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d",xold,yold,zold))
+	if errxu != nil || erryu != nil || errzu != nil {
+		c.Chat("There's something wrong with your ship coding.")
 		return nil
 	}
-	c.Chat("Hello, captain. I require a crystaline structure to align the phase. One diamond, please.")
-	time.Sleep(5 * time.Second)
+	ship_xl = x + xl
+	ship_yl = y + yl
+	ship_zl = z + zl
+	ship_xu = x + xu
+	ship_yu = y + yu
+	ship_zu = z + zu
 
-	// Check if given a diamond.
-	// If not, leave.
-	if false {
-		c.Chat("I cannot warp the ship without a diamond.")
-		c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d", xold,yold,zold))
+	c.Chat("Captain, I've familiarized myself with your ship. We can warp when you're ready.")
+
+	return nil
+}
+func moveShip(mspl []string, captain string) error {
+	if warping == false {
+		c.Chat("I'm unfamiliar with any ships right now, I'm afraid.")
 		return nil
 	}
-	// If so, continue.
-	c.Chat("Thank you, captain.")
+	xf,yf,zf := c.Player.GetPosition()
+	x := int(math.Floor(xf))
+	y := int(math.Floor(yf))
+	z := int(math.Floor(zf))
+
+	xnew, errx := strconv.Atoi(mspl[2])
+	ynew, erry := strconv.Atoi(mspl[3])
+	znew, errz := strconv.Atoi(mspl[4])
+	if errx != nil || erry != nil ||errz != nil {
+		c.Chat("invalid coordinate.")
+		return nil
+	}
+
+/*	// HAHA THIS IS CRAZY
 
 	var xl,yl,zl,xu,yu,zu int
 	var xs,ys,zs int
@@ -362,99 +376,141 @@ func moveShip(mspl []string, captain string) error {
 		c.Chat(fmt.Sprintf("seed block: %d,%d,%d. Min: %d,%d,%d. Max: %d,%d,%d.",xs,ys,zs,xl,yl,zl,xu,yu,zu))
 		return nil
 	}
-	c.Chat("I've computed the boundary of your ship. Warping now...")
+*/
+	xl := ship_xl
+	yl := ship_yl
+	zl := ship_zl
+	xu := ship_xu
+	yu := ship_yu
+	zu := ship_zu
+
+	c.Chat("Very well. I've familiarized myself with the boundaries of your ship and we're ready to warp.")
+	c.Chat("I require a crystaline structure to align the phase. One diamond, please.")
+
+	time.Sleep(5 * time.Second)
+
+	// Check if given a diamond.
+	// If not, leave.
+	if false {
+		c.Chat("I cannot warp the ship without a diamond.")
+		c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d", xbase, ybase, zbase))
+		return nil
+	}
+	// If so, continue.
+	c.Chat("Thank you, captain.")
+
+	c.Chat("Warping now...")
 
 	// Begin warp.
-	c.Chat(fmt.Sprintf("/forceload add %d %d %d %d", xdest-(xu-xl), zdest-(zu-zl), xdest, zdest))
 	xdest := xl + (xnew-x)
 	ydest := Max( 1, Min(yl + (ynew-y), 255-(yu-yl)) )
 	zdest := zl + (znew-z)
+	c.Chat(fmt.Sprintf("/forceload add %d %d %d %d", xdest-(xu-xl), zdest-(zu-zl), xdest, zdest))
 
 	c.Chat(fmt.Sprintf("/clone %d %d %d %d %d %d %d %d %d replace move",xl,yl,zl,xu,yu,zu,xdest,ydest,zdest))
-	c.Chat(fmt.Sprintf("/teleport %s %d %d %d",captain, xnew,ynew,znew))
-	c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d",xnew,ynew,znew))
+	c.Chat(fmt.Sprintf("/teleport %s %d %d %d",captain, xnew,ynew+1,znew))
+	c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d",xnew,ynew+1,znew))
 	c.Chat("Warp complete, captain.")
 	time.Sleep(1 * time.Second)
 	c.Chat("Returning to base now.")
-	c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d", xold, yold, zold))
+	c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d", xbase, ybase, zbase))
+	warping = false
 	c.Chat(fmt.Sprintf("/forceload remove %d %d %d %d", xdest-(xu-xl), zdest-(zu-zl), xdest, zdest))
 	return nil
 }
 
 func onChatMsg(cm chat.Message, pos byte) error {
 	log.Println("Chat:", cm)
-	spl := strings.Split(cm.String(), "> ")
-	if len(spl) <= 1 {
-		return nil
-	}
 
-	msg := spl[1]
-	spl2 := strings.Split(spl[0],"<")
-	requester := spl2[1]
-	if len(msg) > 2 && strings.ToLower(msg[:3]) == "bed" {
-		err := bed(89,66,-249)
-		if err != nil {
-			log.Fatal(err)
-		}
-	} else if len(msg) > 6 && strings.ToLower(msg[:6]) == "tellie" {
-		mspl := strings.Split(msg, " ")
-		pmsg := msg
-		if len(mspl) > 1 {
-			pmsg = strings.Join(mspl[1:], " ")
-		}
-
-		if pmsg == "leave" {
-			log.Println("Requested to leave")
-			leave()
-		} else if pmsg == "see" {
-			x,y,z := c.Player.GetBlockPos()
-			block := c.Wd.GetBlock(x,y-1,z)
-			c.Chat(block.String())
-		} else if len(pmsg) > 6 && strings.ToLower(pmsg[:6]) == "select" {
-			j, err := strconv.Atoi(mspl[2])
-			if err != nil {
-				c.Chat("I don't understand that slot.")
-				return nil
-			} else if j > 8 || j < 0 {
-				c.Chat("That slot isn't valid.")
-			}
-			c.SelectItem(j)
-		} else if pmsg == "what are you holding" {
-			c.Chat(fmt.Sprintf("%d", c.Player.HeldItem))
-		} else if len(pmsg)>4 && strings.ToLower(pmsg[:4]) == "find" {
-			err := find(mspl)
-			if err != nil {
-				log.Fatal(err)
-			}
-		} else if len(pmsg) > 5 && strings.ToLower(pmsg[:5]) == "drive" {
-			warping = true
-			err := moveShip(mspl,requester)
-			if err != nil {
-				log.Fatal(err)
-			}
-			warping = false
+	cmstr := cm.String()
+	if false == true {
+		// this is just here for now.
+	} else {
+		// it's a standard message.
+		var spl, spl2 []string
+		if cmstr[0] == '[' {
+			spl = strings.Split(cmstr, "] ")
+			spl2 = strings.Split(spl[0],"[")
+		} else if cmstr[0] == '<' {
+			spl = strings.Split(cmstr, "> ")
+			spl2 = strings.Split(spl[0],"<")
 		} else {
-			resp, err := session.Ask(pmsg)
+			return nil
+		}
+		if len(spl) <= 1 {
+			return nil
+		}
+
+		msg := spl[1]
+		requester := spl2[1]
+		if len(msg) > 2 && strings.ToLower(msg[:3]) == "bed" {
+			err := bed(89,66,-249)
 			if err != nil {
-				fmt.Printf("Cleverbot error: %v\n", err)
+				log.Fatal(err)
+			}
+		} else if len(msg) > 6 && msg[:6] == "BSSSRT" {
+			warping = true
+			mspl := strings.Split(msg, " ")
+			learnShip(mspl)
+			return nil
+		} else if len(msg) > 6 && strings.ToLower(msg[:6]) == "tellie" {
+			mspl := strings.Split(msg, " ")
+			pmsg := msg
+			if len(mspl) > 1 {
+				pmsg = strings.Join(mspl[1:], " ")
+			}
+
+			if pmsg == "leave" {
+				log.Println("Requested to leave")
+				leave()
+			} else if pmsg == "see" {
+				x,y,z := c.Player.GetBlockPos()
+				block := c.Wd.GetBlock(x,y-1,z)
+				c.Chat(block.String())
+			} else if len(pmsg) > 6 && strings.ToLower(pmsg[:6]) == "select" {
+				j, err := strconv.Atoi(mspl[2])
+				if err != nil {
+					c.Chat("I don't understand that slot.")
+					return nil
+				} else if j > 8 || j < 0 {
+					c.Chat("That slot isn't valid.")
+				}
+				c.SelectItem(j)
+			} else if pmsg == "what are you holding" {
+				c.Chat(fmt.Sprintf("%d", c.Player.HeldItem))
+			} else if len(pmsg)>4 && strings.ToLower(pmsg[:4]) == "find" {
+				err := find(mspl)
+				if err != nil {
+					log.Fatal(err)
+				}
+			} else if len(pmsg) > 4 && strings.ToLower(pmsg[:4]) == "warp" {
+				err := moveShip(mspl,requester)
+				if err != nil {
+					log.Fatal(err)
+				}
 			} else {
-				c.Chat(resp)
+				resp, err := session.Ask(pmsg)
+				if err != nil {
+					fmt.Printf("Cleverbot error: %v\n", err)
+				} else {
+					c.Chat(resp)
+				}
+				/*
+				inp := fmt.Sprintf("MAN: %s WOMAN: ", pmsg)
+				out, err := exec.Command("/bin/bash", "./cmd.sh", inp).Output()
+				if err != nil {
+					// log.Fatal(err)
+					fmt.Printf("GPT2 error: %v\n", err)
+				}
+				proc := re.Split(string(out), -1)
+				tellieResp := strings.Split(strings.Trim(proc[2], " 	\n"), "\n")[0]
+				proc2 := re2.Split(tellieResp, -1)
+				if len(proc2) > 1 {
+					tellieResp = strings.Join(proc2[:len(proc2)-1], " ")
+				}
+				c.Chat(tellieResp)
+				*/
 			}
-			/*
-			inp := fmt.Sprintf("MAN: %s WOMAN: ", pmsg)
-			out, err := exec.Command("/bin/bash", "./cmd.sh", inp).Output()
-			if err != nil {
-				// log.Fatal(err)
-				fmt.Printf("GPT2 error: %v\n", err)
-			}
-			proc := re.Split(string(out), -1)
-			tellieResp := strings.Split(strings.Trim(proc[2], " 	\n"), "\n")[0]
-			proc2 := re2.Split(tellieResp, -1)
-			if len(proc2) > 1 {
-				tellieResp = strings.Join(proc2[:len(proc2)-1], " ")
-			}
-			c.Chat(tellieResp)
-			*/
 		}
 	}
 
