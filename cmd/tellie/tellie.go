@@ -32,6 +32,7 @@ var (
 	warping = false
 	xbase,ybase,zbase int
 	ship_xl,ship_yl,ship_zl,ship_xu,ship_yu,ship_zu int
+	ship_x,ship_y,ship_z int
 
 	watch chan time.Time
 	apiKey = "CC238ZlLq4J0m-JTvrKBlmx5XNA"
@@ -189,28 +190,35 @@ func find(mspl []string) error {
 		c.Chat("invalid coordinate.")
 		return nil
 	}
-	success := 0
+	bfx := []int{}
+	bfy := []int{}
+	bfz := []int{}
 	var xb, yb, zb int
 	for xb = x-30 ; xb < x+30; xb++ {
 		for yb = Max(1,y-30) ; yb < Min(255,y+30); yb++ {
 			for zb = z-30 ; zb < z+30; zb++ {
 				block := c.Wd.GetBlock(xb,yb,zb)
 				if block.String() == blockname {
-					c.Chat(fmt.Sprintf("%s found at %d,%d,%d\n",blockname,xb,yb,zb))
-					success = 1
-					break
+					bfx = append(bfx, xb)
+					bfy = append(bfy, yb)
+					bfz = append(bfz, zb)
 				}
 			}
-			if success == 1 {
-				break
-			}
-		}
-		if success == 1 {
-			break
 		}
 	}
-	if success == 0 {
+	if len(bfx) == 0 {
 		c.Chat(fmt.Sprintf("%s not found.",blockname))
+	} else {
+		minj := 0
+		mindist := bfx[0]-x + bfy[0]-y + bfz[0]-z
+		for j := 0; j < len(bfx); j++ {
+			if bfx[j]-x + bfy[j]-y + bfz[j]-z < mindist {
+				mindist = bfx[j]-x + bfy[j]-y + bfz[j]-z
+				minj = j
+			}
+		}
+		c.Chat(fmt.Sprintf("%d instances of %s found. The nearest is #%d at %d,%d,%d\n",len(bfx),blockname,minj,bfx[minj],bfy[minj],bfz[minj]))
+
 	}
 	return nil
 }
@@ -237,6 +245,9 @@ func learnShip(spl []string) error {
 		c.Chat("There's something wrong with your ship coding.")
 		return nil
 	}
+	ship_x = x
+	ship_y = y
+	ship_z = z
 	ship_xl = x + xl
 	ship_yl = y + yl
 	ship_zl = z + zl
@@ -244,7 +255,8 @@ func learnShip(spl []string) error {
 	ship_yu = y + yu
 	ship_zu = z + zu
 
-	c.Chat("Captain, I've familiarized myself with your ship. We can warp when you're ready.")
+	c.Chat("Captain, I've familiarized myself with your ship. You can warp whenever you're ready.")
+	c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d",xbase,ybase,zbase))
 
 	return nil
 }
@@ -253,10 +265,6 @@ func moveShip(mspl []string, captain string) error {
 		c.Chat("I'm unfamiliar with any ships right now, I'm afraid.")
 		return nil
 	}
-	xf,yf,zf := c.Player.GetPosition()
-	x := int(math.Floor(xf))
-	y := int(math.Floor(yf))
-	z := int(math.Floor(zf))
 
 	xnew, errx := strconv.Atoi(mspl[2])
 	ynew, erry := strconv.Atoi(mspl[3])
@@ -265,118 +273,11 @@ func moveShip(mspl []string, captain string) error {
 		c.Chat("invalid coordinate.")
 		return nil
 	}
+	c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d",ship_x,ship_y,ship_z))
 
-/*	// HAHA THIS IS CRAZY
-
-	var xl,yl,zl,xu,yu,zu int
-	var xs,ys,zs int
-	// first we find a gold block.
-	var xb, yb, zb int
-	success := 0
-	for xb = x-30 ; xb < x+30; xb++ {
-		for yb = Max(1,y-30) ; yb < Min(255,y+30); yb++ {
-			for zb = z-30 ; zb < z+30; zb++ {
-				block := c.Wd.GetBlock(xb,yb,zb)
-				if block.String() == "minecraft:gold_block" {
-					success = 1
-					xs = xb
-					ys = yb
-					zs = zb
-					break
-				}
-			}
-			if success == 1 {
-				break
-			}
-		}
-		if success == 1 {
-			break
-		}
-	}
-	if success == 0 {
-		c.Chat(fmt.Sprintf("Please move your captain closer to a ship corner."))
-		return nil
-	} else {
-		c.Chat(fmt.Sprintf("Found seed block at %d,%d,%d.",xs, ys, zs))
-	}
-
-	// Now we seek the other gold blocks.
-	success = 0
-	d := 0
-	for success == 0 && d < 100 {
-		d = d+1
-		block := c.Wd.GetBlock(xs-d,ys,zs)
-		if block.String() == "minecraft:gold_block" {
-			success = 1
-			xl = xs-d
-			xu = xs
-			c.Chat(fmt.Sprintf("Found new x block at %d,%d,%d.",xl, ys, zs))
-
-		}
-		block = c.Wd.GetBlock(xs+d,ys,zs)
-		if block.String() == "minecraft:gold_block" {
-			success = 1
-			xl = xs
-			xu = xs+d
-			c.Chat(fmt.Sprintf("Found new x block at %d,%d,%d.",xu, ys, zs))
-		}
-	}
-	if success == 0 {
-		c.Chat("your ship is too big in x.")
-		c.Chat(fmt.Sprintf("seed block: %d,%d,%d. Min: %d,%d,%d. Max: %d,%d,%d.",xs,ys,zs,xl,yl,zl,xu,yu,zu))
-		return nil
-	}
-	success = 0
-	d = 0
-	for success == 0 && d < 100 {
-		d = d+1
-		block := c.Wd.GetBlock(xs,Max(ys-d,1),zs)
-		if block.String() == "minecraft:gold_block" {
-			success = 1
-			yl = Max(ys-d,1)
-			yu = ys
-			c.Chat(fmt.Sprintf("Found new y block at %d,%d,%d.",xs, yl, zs))
-		}
-		block = c.Wd.GetBlock(xs,Min(ys+d,255),zs)
-		if block.String() == "minecraft:gold_block" {
-			success = 1
-			yl = ys
-			yu = Min(ys+d,255)
-			c.Chat(fmt.Sprintf("Found new y block at %d,%d,%d.",xs, yu, zs))
-		}
-	}
-	if success == 0 {
-		c.Chat("your ship is too big in y.")
-		c.Chat(fmt.Sprintf("seed block: %d,%d,%d. Min: %d,%d,%d. Max: %d,%d,%d.",xs,ys,zs,xl,yl,zl,xu,yu,zu))
-		return nil
-	}
-	success = 0
-	d = 0
-	for success == 0 && d < 100 {
-		d = d+1
-		block := c.Wd.GetBlock(xs,ys,zs-d)
-		c.Chat(fmt.Sprintf("%d,%d,%d: %s",xs,ys,zs-d,block.String()))
-		if block.String() == "minecraft:gold_block" {
-			success = 1
-			zl = zs-d
-			zu = zs
-			c.Chat(fmt.Sprintf("Found new z block at %d,%d,%d.",xs, ys, zl))
-		}
-		block = c.Wd.GetBlock(xs,ys,zs+d)
-		c.Chat(fmt.Sprintf("%d,%d,%d: %s",xs,ys,zs+d,block.String()))
-		if block.String() == "minecraft:gold_block" {
-			success = 1
-			zl = zs
-			zu = zs+d
-			c.Chat(fmt.Sprintf("Found new z block at %d,%d,%d.",xs, ys, zu))
-		}
-	}
-	if success == 0 {
-		c.Chat("your ship is too big in z.")
-		c.Chat(fmt.Sprintf("seed block: %d,%d,%d. Min: %d,%d,%d. Max: %d,%d,%d.",xs,ys,zs,xl,yl,zl,xu,yu,zu))
-		return nil
-	}
-*/
+	x := ship_x
+	y := ship_y
+	z := ship_z
 	xl := ship_xl
 	yl := ship_yl
 	zl := ship_zl
@@ -384,15 +285,15 @@ func moveShip(mspl []string, captain string) error {
 	yu := ship_yu
 	zu := ship_zu
 
-	c.Chat("Very well. I've familiarized myself with the boundaries of your ship and we're ready to warp.")
-	c.Chat("I require a crystaline structure to align the phase. One diamond, please.")
+	c.Chat(fmt.Sprintf("/tell %s Very well. I've familiarized myself with the boundaries of your ship and we're ready to warp.",captain))
+	c.Chat(fmt.Sprintf("/tell %s I require a crystaline structure to align the phase. One diamond, please.",captain))
 
 	time.Sleep(5 * time.Second)
 
 	// Check if given a diamond.
 	// If not, leave.
 	if false {
-		c.Chat("I cannot warp the ship without a diamond.")
+		c.Chat(fmt.Sprintf("/tell %s I cannot warp the ship without a diamond.",captain))
 		c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d", xbase, ybase, zbase))
 		return nil
 	}
@@ -402,20 +303,30 @@ func moveShip(mspl []string, captain string) error {
 	c.Chat("Warping now...")
 
 	// Begin warp.
+
 	xdest := xl + (xnew-x)
 	ydest := Max( 1, Min(yl + (ynew-y), 255-(yu-yl)) )
 	zdest := zl + (znew-z)
+
 	c.Chat(fmt.Sprintf("/forceload add %d %d %d %d", xdest-(xu-xl), zdest-(zu-zl), xdest, zdest))
 
 	c.Chat(fmt.Sprintf("/clone %d %d %d %d %d %d %d %d %d replace move",xl,yl,zl,xu,yu,zu,xdest,ydest,zdest))
-	c.Chat(fmt.Sprintf("/teleport %s %d %d %d",captain, xnew,ynew+1,znew))
+//	c.Chat(fmt.Sprintf("/teleport %s %d %d %d",captain, xnew,ynew+1,znew))
+	c.Chat(fmt.Sprintf("/teleport %s %d %d %d","scefing", xnew,ynew+1,znew))
+	c.Chat(fmt.Sprintf("/teleport %s %d %d %d","CowSnail", xnew,ynew+1,znew))
 	c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d",xnew,ynew+1,znew))
-	c.Chat("Warp complete, captain.")
+	c.Chat(fmt.Sprintf("/tell %s Warp complete, captain.",captain))
 	time.Sleep(1 * time.Second)
-	c.Chat("Returning to base now.")
+	c.Chat(fmt.Sprintf("/tell %s Returning to base now.",captain))
 	c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d", xbase, ybase, zbase))
 	warping = false
 	c.Chat(fmt.Sprintf("/forceload remove %d %d %d %d", xdest-(xu-xl), zdest-(zu-zl), xdest, zdest))
+
+	c.Chat(fmt.Sprintf("x: %d, y: %d, z: %d", x,y,z))
+	c.Chat(fmt.Sprintf("xnew: %d, ynew: %d, znew: %d", xnew,ynew,znew))
+	c.Chat(fmt.Sprintf("xl: %d, yl: %d, zl: %d", xl,yl,zl))
+	c.Chat(fmt.Sprintf("xu: %d, yu: %d, zu: %d", xu,yu,zu))
+	c.Chat(fmt.Sprintf("xdest: %d, ydest: %d, zdest: %d", xdest,ydest,zdest))
 	return nil
 }
 
