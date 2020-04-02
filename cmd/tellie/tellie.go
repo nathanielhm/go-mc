@@ -33,7 +33,7 @@ var (
 	xbase,ybase,zbase int
 	ship_xl,ship_yl,ship_zl,ship_xu,ship_yu,ship_zu int
 	ship_x,ship_y,ship_z int
-	crew []string
+	locations = make(map[string][3]int)
 
 	watch chan time.Time
 	apiKey = "CC238ZlLq4J0m-JTvrKBlmx5XNA"
@@ -125,6 +125,17 @@ func onGameStart() error {
 
 	c.Chat("hello")
 
+	locations["skyhold"] = [3]int{5500,200,4500}
+	locations["base"] = [3]int{130,70,-240}
+/*
+	locations["skyhold"][0] = 5500
+	locations["skyhold"][1] = 200
+	locations["skyhold"][2] = 4500
+
+	locations["base"][0] = 130
+	locations["base"][1] = 70
+	locations["base"][2] = -240
+*/
 	watch = make(chan time.Time)
 	return nil
 }
@@ -268,13 +279,18 @@ func moveShip(mspl []string, captain string) error {
 		return nil
 	}
 
-	xnew, errx := strconv.Atoi(mspl[2])
-	ynew, erry := strconv.Atoi(mspl[3])
-	znew, errz := strconv.Atoi(mspl[4])
-	if errx != nil || erry != nil ||errz != nil {
-		c.Chat("invalid coordinate.")
+	ship := mspl[2]
+	loc := strings.ToLower(mspl[3])
+	var xnew, ynew, znew int
+	if locations[loc][0] != 0 || locations[loc][1] != 0 || locations[loc][2] != 0 {
+		xnew = locations[loc][0]
+		ynew = locations[loc][1]
+		znew = locations[loc][2]
+	} else {
+		c.Chat("I don't recognize that location Captain.")
 		return nil
 	}
+
 	c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d",ship_x,ship_y,ship_z))
 
 	x := ship_x
@@ -306,19 +322,19 @@ func moveShip(mspl []string, captain string) error {
 
 	// Begin warp.
 
-	xdest := xl + (xnew-x)
-	ydest := Max( 1, Min(yl + (ynew-y), 255-(yu-yl)) )
-	zdest := zl + (znew-z)
+	xshift := xnew-x
+	yshift := ynew-y
+	zshift := znew-z
+	xdest := xl + xshift
+	ydest := Max( 1, Min(yl + yshift, 255-(yu-yl)) )
+	zdest := zl + zshift
 
 	c.Chat(fmt.Sprintf("/forceload add %d %d %d %d", xdest-(xu-xl), zdest-(zu-zl), xdest, zdest))
 
 	c.Chat(fmt.Sprintf("/clone %d %d %d %d %d %d %d %d %d replace move",xl,yl,zl,xu,yu,zu,xdest,ydest,zdest))
-//	c.Chat(fmt.Sprintf("/teleport %s %d %d %d",captain, xnew,ynew+1,znew))
-	// c.Chat(fmt.Sprintf("/teleport %s %d %d %d","scefing", xnew,ynew+1,znew))
-	// c.Chat(fmt.Sprintf("/teleport %s %d %d %d","CowSnail", xnew,ynew+1,znew))
-	for _, member := range crew {
-		c.Chat(fmt.Sprintf("/teleport %s %d %d %d", member, xnew, ynew+1, znew))
-	}
+
+	c.Chat(fmt.Sprintf("/execute as @a[tag=%s] at @s run teleport ~%d ~%d ~%d", ship, xshift, yshift+1, zshift))
+
 	c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d",xnew,ynew+1,znew))
 	c.Chat(fmt.Sprintf("/tell %s Warp complete, captain.",captain))
 	time.Sleep(1 * time.Second)
@@ -403,16 +419,6 @@ func onChatMsg(cm chat.Message, pos byte) error {
 				err := moveShip(mspl,requester)
 				if err != nil {
 					log.Fatal(err)
-				}
-			} else if len(pmsg) > 4 && strings.ToLower(pmsg[:4]) == "crew" {
-				for _, member := range crew {
-					c.Chat(member)
-				}
-				cspl := strings.Split(pmsg, " ")
-				c.Chat("Warp crew set to:")
-				crew = cspl[1:]
-				for _, member := range crew {
-					c.Chat(fmt.Sprintf("   %s", member))
 				}
 			} else {
 				resp, err := session.Ask(pmsg)
