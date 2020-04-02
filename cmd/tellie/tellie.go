@@ -33,6 +33,7 @@ var (
 	xbase,ybase,zbase int
 	ship_xl,ship_yl,ship_zl,ship_xu,ship_yu,ship_zu int
 	ship_x,ship_y,ship_z int
+	crew []string
 
 	watch chan time.Time
 	apiKey = "CC238ZlLq4J0m-JTvrKBlmx5XNA"
@@ -73,6 +74,7 @@ func main() {
 	for _,v := range servers {
 		if v.Name == realm_name {
 			fmt.Println("Found Realm", realm_name)
+			fmt.Printf("v is %s\n", v)
 			address, err := r.Address(v)
 			if err != nil {
 				panic(err)
@@ -312,8 +314,11 @@ func moveShip(mspl []string, captain string) error {
 
 	c.Chat(fmt.Sprintf("/clone %d %d %d %d %d %d %d %d %d replace move",xl,yl,zl,xu,yu,zu,xdest,ydest,zdest))
 //	c.Chat(fmt.Sprintf("/teleport %s %d %d %d",captain, xnew,ynew+1,znew))
-	c.Chat(fmt.Sprintf("/teleport %s %d %d %d","scefing", xnew,ynew+1,znew))
-	c.Chat(fmt.Sprintf("/teleport %s %d %d %d","CowSnail", xnew,ynew+1,znew))
+	// c.Chat(fmt.Sprintf("/teleport %s %d %d %d","scefing", xnew,ynew+1,znew))
+	// c.Chat(fmt.Sprintf("/teleport %s %d %d %d","CowSnail", xnew,ynew+1,znew))
+	for _, member := range crew {
+		c.Chat(fmt.Sprintf("/teleport %s %d %d %d", member, xnew, ynew+1, znew))
+	}
 	c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d",xnew,ynew+1,znew))
 	c.Chat(fmt.Sprintf("/tell %s Warp complete, captain.",captain))
 	time.Sleep(1 * time.Second)
@@ -398,6 +403,16 @@ func onChatMsg(cm chat.Message, pos byte) error {
 				err := moveShip(mspl,requester)
 				if err != nil {
 					log.Fatal(err)
+				}
+			} else if len(pmsg) > 4 && strings.ToLower(pmsg[:4]) == "crew" {
+				for _, member := range crew {
+					c.Chat(member)
+				}
+				cspl := strings.Split(pmsg, " ")
+				c.Chat("Warp crew set to:")
+				crew = cspl[1:]
+				for _, member := range crew {
+					c.Chat(fmt.Sprintf("   %s", member))
 				}
 			} else {
 				resp, err := session.Ask(pmsg)
