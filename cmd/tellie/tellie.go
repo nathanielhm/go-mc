@@ -180,8 +180,10 @@ func bed(xb,yb,zb int) error {
 	if err != nil {
 		return err
 	}
-	time.Sleep(1 * time.Second)
-	c.Chat("In bed")
+	err = c.UseBlock(0,xb,yb,zb,1,0.5,1,0.5,false)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -303,20 +305,9 @@ func moveShip(mspl []string, captain string) error {
 	yu := ship_yu
 	zu := ship_zu
 
-	c.Chat(fmt.Sprintf("/tell %s Very well. I've familiarized myself with the boundaries of your ship and we're ready to warp.",captain))
-	c.Chat(fmt.Sprintf("/tell %s I require a crystaline structure to align the phase. One diamond, please.",captain))
+	c.Chat(fmt.Sprintf("/tell %s Very well. I've familiarized myself with the boundaries of the %s and we're ready to warp.",ship,captain))
 
-	time.Sleep(5 * time.Second)
-
-	// Check if given a diamond.
-	// If not, leave.
-	if false {
-		c.Chat(fmt.Sprintf("/tell %s I cannot warp the ship without a diamond.",captain))
-		c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d", xbase, ybase, zbase))
-		return nil
-	}
-	// If so, continue.
-	c.Chat("Thank you, captain.")
+	time.Sleep(1 * time.Second)
 
 	c.Chat("Warping now...")
 
@@ -328,7 +319,7 @@ func moveShip(mspl []string, captain string) error {
 	xdest := xl + xshift
 	ydest := Max( 1, Min(yl + yshift, 255-(yu-yl)) )
 	zdest := zl + zshift
-
+/*
 	c.Chat(fmt.Sprintf("/forceload add %d %d %d %d", xdest-(xu-xl), zdest-(zu-zl), xdest, zdest))
 
 	c.Chat(fmt.Sprintf("/clone %d %d %d %d %d %d %d %d %d replace move",xl,yl,zl,xu,yu,zu,xdest,ydest,zdest))
@@ -339,10 +330,11 @@ func moveShip(mspl []string, captain string) error {
 	c.Chat(fmt.Sprintf("/tell %s Warp complete, captain.",captain))
 	time.Sleep(1 * time.Second)
 	c.Chat(fmt.Sprintf("/tell %s Returning to base now.",captain))
+	c.Chat(fmt.Sprintf("/forceload remove %d %d %d %d", xdest-(xu-xl), zdest-(zu-zl), xdest, zdest))
+*/
+
 	c.Chat(fmt.Sprintf("/teleport Telleilogical %d %d %d", xbase, ybase, zbase))
 	warping = false
-	c.Chat(fmt.Sprintf("/forceload remove %d %d %d %d", xdest-(xu-xl), zdest-(zu-zl), xdest, zdest))
-
 	c.Chat(fmt.Sprintf("x: %d, y: %d, z: %d", x,y,z))
 	c.Chat(fmt.Sprintf("xnew: %d, ynew: %d, znew: %d", xnew,ynew,znew))
 	c.Chat(fmt.Sprintf("xl: %d, yl: %d, zl: %d", xl,yl,zl))
@@ -380,6 +372,10 @@ func onChatMsg(cm chat.Message, pos byte) error {
 			if err != nil {
 				log.Fatal(err)
 			}
+		} else if msg == "You can only sleep at night and during thunderstorms" {
+			c.Chat("I can't sleep just yet.")
+		} else if msg == "This bed is occupied" {
+			c.Chat("In bed")
 		} else if len(msg) > 6 && msg[:6] == "BSSSRT" {
 			warping = true
 			mspl := strings.Split(msg, " ")
